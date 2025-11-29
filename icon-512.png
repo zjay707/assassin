@@ -1,0 +1,34 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="512" height="512" fill="#0a0a0a"/>
+  
+  <!-- Gradient background -->
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%">
+      <stop offset="0%" style="stop-color:#ff4757;stop-opacity:0.2" />
+      <stop offset="100%" style="stop-color:#0a0a0a;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  
+  <!-- Crosshair -->
+  <g transform="translate(256, 256)">
+    <!-- Outer ring -->
+    <circle cx="0" cy="0" r="140" fill="none" stroke="#ff6348" stroke-width="32"/>
+    
+    <!-- Top marker -->
+    <rect x="-16" y="-200" width="32" height="72" fill="#ff6348" rx="16"/>
+    
+    <!-- Right marker -->
+    <rect x="128" y="-16" width="72" height="32" fill="#ff6348" rx="16"/>
+    
+    <!-- Bottom marker -->
+    <rect x="-16" y="128" width="32" height="72" fill="#ff6348" rx="16"/>
+    
+    <!-- Left marker -->
+    <rect x="-200" y="-16" width="72" height="32" fill="#ff6348" rx="16"/>
+    
+    <!-- Center dot -->
+    <circle cx="0" cy="0" r="32" fill="#ff6348"/>
+  </g>
+</svg>

@@ -1,0 +1,1749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Assassin - The Game Where Words Kill</title>
+    
+    <!-- PWA Meta Tags -->
+    <meta name="description" content="The social deduction game where words can kill. Get your target to say your secret word!">
+    <meta name="theme-color" content="#ff4757">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Assassin">
+    
+    <!-- Manifest -->
+    <link rel="manifest" href="manifest.json">
+    
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    
+    <!-- Fingerprint.js for Device ID -->
+    <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        .crosshair-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto;
+            display: block;
+            filter: drop-shadow(0 4px 12px rgba(255, 99, 72, 0.4));
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #1e1e2e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            color: #fff;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle at 20% 50%, rgba(255, 71, 87, 0.08) 0%, transparent 50%),
+                        radial-gradient(circle at 80% 80%, rgba(44, 62, 80, 0.1) 0%, transparent 50%);
+            pointer-events: none;
+            z-index: 0;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #fff;
+            margin-bottom: 8px;
+            font-size: clamp(1.8em, 6vw, 2.5em);
+            font-weight: 800;
+            letter-spacing: -1px;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 32px;
+            font-size: 15px;
+            font-weight: 500;
+        }
+        
+        .btn {
+            width: 100%;
+            padding: 18px;
+            border: none;
+            border-radius: 16px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            margin-bottom: 12px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', sans-serif;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.3px;
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 50%, #ff6348 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4),
+                        0 4px 8px rgba(255, 71, 87, 0.2);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn-primary:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(255, 71, 87, 0.5),
+                        0 6px 12px rgba(255, 71, 87, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(-1px);
+        }
+        
+        .btn-secondary {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+            color: white;
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            backdrop-filter: blur(10px);
+        }
+        
+        .btn-secondary:hover {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 255, 255, 0.08) 100%);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+        
+        .btn-success {
+            background: linear-gradient(135deg, #ff4757 0%, #ff6b6b 50%, #ff6348 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(255, 71, 87, 0.4),
+                        0 4px 8px rgba(255, 71, 87, 0.2);
+            border: 1px solid rgba(255, 107, 107, 0.3);
+        }
+        
+        .btn-success:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(255, 71, 87, 0.5),
+                        0 6px 12px rgba(255, 71, 87, 0.3);
+        }
+        
+        .btn-danger {
+            background: linear-gradient(135deg, #eb3349 0%, #f45c43 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(235, 51, 73, 0.4);
+            border: 1px solid rgba(244, 92, 67, 0.3);
+        }
+
+        .btn-danger:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(235, 51, 73, 0.5);
+        }
+
+        .btn-warning {
+            background: linear-gradient(135deg, #ffa502 0%, #ff7979 100%);
+            color: white;
+            box-shadow: 0 8px 24px rgba(255, 165, 2, 0.4);
+            border: 1px solid rgba(255, 121, 121, 0.3);
+        }
+
+        .btn-warning:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 12px 32px rgba(255, 165, 2, 0.5);
+        }
+        
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+        
+        input {
+            width: 100%;
+            padding: 18px 20px;
+            border: 1.5px solid rgba(255, 255, 255, 0.12);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+            border-radius: 16px;
+            font-size: 16px;
+            margin-bottom: 12px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            color: white;
+            font-family: 'Inter', sans-serif;
+            font-weight: 500;
+            backdrop-filter: blur(10px);
+        }
+        
+        input::placeholder {
+            color: rgba(255, 255, 255, 0.35);
+            font-weight: 400;
+        }
+        
+        input:focus {
+            outline: none;
+            border-color: rgba(255, 99, 72, 0.6);
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.05) 100%);
+            box-shadow: 0 0 0 4px rgba(255, 99, 72, 0.08),
+                        0 8px 16px rgba(0, 0, 0, 0.2);
+            transform: translateY(-2px);
+        }
+        
+        .game-code {
+            text-align: center;
+            font-size: 3.5em;
+            font-weight: 800;
+            color: #ff6348;
+            letter-spacing: 12px;
+            margin: 24px 0;
+            padding: 24px;
+            background: rgba(255, 99, 72, 0.1);
+            border-radius: 16px;
+            border: 2px solid rgba(255, 99, 72, 0.3);
+        }
+        
+        .player-list {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+            border-radius: 20px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+        
+        .player-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .player-list-title {
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+        }
+        
+        .player-count {
+            background: linear-gradient(135deg, rgba(255, 99, 72, 0.25) 0%, rgba(255, 99, 72, 0.15) 100%);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ff6348;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+        }
+        
+        .player-item {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            padding: 16px 18px;
+            border-radius: 14px;
+            margin-bottom: 10px;
+            font-weight: 500;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .player-item:hover {
+            transform: translateX(4px);
+            border-color: rgba(255, 99, 72, 0.3);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        
+        .player-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .player-points {
+            background: linear-gradient(135deg, rgba(255, 99, 72, 0.25) 0%, rgba(255, 99, 72, 0.15) 100%);
+            padding: 6px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 700;
+            color: #ff6348;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+        }
+        
+        .mission-box {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+            padding: 36px;
+            border-radius: 24px;
+            margin-bottom: 24px;
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3),
+                        0 0 1px rgba(255, 255, 255, 0.1) inset;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .mission-box::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, rgba(255, 99, 72, 0.4), transparent);
+        }
+        
+        .mission-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 28px;
+            text-align: center;
+            letter-spacing: 2px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            font-size: 14px;
+        }
+        
+        .mission-card {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.04) 100%);
+            padding: 24px 20px;
+            border-radius: 16px;
+            margin-bottom: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .mission-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+        
+        .mission-label {
+            font-size: 13px;
+            opacity: 0.7;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        
+        .target {
+            font-size: clamp(1.5em, 4vw, 2em);
+            font-weight: 800;
+            text-align: center;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            hyphens: auto;
+        }
+        
+        .word {
+            font-size: 2.8em;
+            font-weight: 800;
+            text-align: center;
+            color: #ff4757;
+            text-shadow: 0 2px 10px rgba(255, 71, 87, 0.3);
+            white-space: nowrap;
+            padding: 0;
+            line-height: 1.2;
+            display: inline-block;
+            transform-origin: center center;
+            transition: transform 0.3s ease;
+        }
+
+        /* Responsive word sizing */
+        @media (max-width: 400px) {
+            .word {
+                font-size: 2.4em;
+            }
+        }
+
+        @media (max-width: 350px) {
+            .word {
+                font-size: 2em;
+            }
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 12px;
+            margin-top: 32px;
+            margin-bottom: 24px;
+        }
+        
+        .stat-box {
+            background: linear-gradient(135deg, rgba(255, 255, 255, 0.06) 0%, rgba(255, 255, 255, 0.03) 100%);
+            padding: 24px 12px;
+            border-radius: 20px;
+            text-align: center;
+            border: 1.5px solid rgba(255, 255, 255, 0.08);
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 99, 72, 0.3);
+        }
+        
+        .stat-value {
+            font-size: clamp(1.8em, 5vw, 2.2em);
+            font-weight: 800;
+            background: linear-gradient(135deg, #ff6348 0%, #ff8a80 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            line-height: 1;
+            margin-bottom: 8px;
+        }
+        
+        .stat-label {
+            color: rgba(255, 255, 255, 0.6);
+            margin-top: 8px;
+            font-size: clamp(10px, 2.5vw, 12px);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            text-align: center;
+        }
+        
+        .divider {
+            text-align: center;
+            margin: 24px 0;
+            color: rgba(255, 255, 255, 0.4);
+            position: relative;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .divider:before, .divider:after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 35%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .divider:before {
+            left: 0;
+        }
+        
+        .divider:after {
+            right: 0;
+        }
+        
+        .icon {
+            font-size: 4em;
+            text-align: center;
+            margin-bottom: 16px;
+        }
+        
+        .tip {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 16px 20px;
+            border-radius: 12px;
+            margin-top: 24px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .tip strong {
+            color: #ffd700;
+        }
+        
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            background: rgba(34, 197, 94, 0.2);
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: 600;
+            font-size: 14px;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            min-width: 120px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background: #22c55e;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .points-display {
+            background: rgba(255, 99, 72, 0.15);
+            padding: 10px 20px;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: 700;
+            font-size: 16px;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+            min-width: 120px;
+            text-align: center;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        
+        .info-box {
+            background: rgba(30, 144, 255, 0.1);
+            border: 1px solid rgba(30, 144, 255, 0.3);
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        /* Modal Styles */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(8px);
+            animation: fadeIn 0.3s;
+        }
+        
+        .modal.active {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-content {
+            background: rgba(26, 10, 10, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 36px;
+            border-radius: 24px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 99, 72, 0.2);
+            animation: modalSlideUp 0.3s;
+        }
+        
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .modal-input {
+            margin-bottom: 16px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from { transform: translateY(0); opacity: 1; }
+            to { transform: translateY(-30px); opacity: 0; }
+        }
+        
+        @keyframes slideDown {
+            from { transform: translateX(-50%) translateY(-30px); opacity: 0; }
+            to { transform: translateX(-50%) translateY(0); opacity: 1; }
+        }
+        
+        @keyframes modalSlideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        
+        .eliminated-screen {
+            background: linear-gradient(135deg, rgba(235, 51, 73, 0.2) 0%, rgba(244, 92, 67, 0.2) 100%);
+            border: 1px solid rgba(235, 51, 73, 0.3);
+        }
+        
+        .winner-screen {
+            background: linear-gradient(135deg, rgba(255, 71, 87, 0.2) 0%, rgba(255, 99, 72, 0.2) 100%);
+            border: 1px solid rgba(255, 71, 87, 0.3);
+        }
+        
+        .player-detail {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .player-name {
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 12px;
+            color: #ff6348;
+        }
+        
+        .player-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+        
+        .info-item {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            border-radius: 8px;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 4px;
+        }
+        
+        .info-value {
+            font-weight: 600;
+            font-size: 16px;
+        }
+        
+        .code-display-bottom {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 99, 72, 0.15);
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            letter-spacing: 2px;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+            font-size: 12px;
+            z-index: 100;
+            opacity: 0.8;
+            white-space: nowrap;
+            max-width: 90%;
+            text-align: center;
+        }
+
+        /* Add padding to container bottom so content doesn't overlap with fixed game code */
+        .container {
+            background: linear-gradient(135deg, rgba(26, 26, 26, 0.95) 0%, rgba(20, 20, 30, 0.95) 100%);
+            backdrop-filter: blur(20px);
+            border-radius: 32px;
+            padding: 48px 40px 70px 40px;
+            max-width: 480px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 
+                        0 0 1px rgba(255, 255, 255, 0.1) inset,
+                        0 8px 16px rgba(255, 71, 87, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            position: relative;
+            z-index: 1;
+        }
+
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(255, 99, 72, 0.3), transparent);
+        }
+
+        .code-display {
+            background: rgba(255, 99, 72, 0.15);
+            padding: 12px 20px;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: 700;
+            letter-spacing: 3px;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+            margin-top: 8px;
+        }
+
+        .firebase-notice {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            padding: 16px;
+            border-radius: 12px;
+            margin-bottom: 24px;
+            text-align: center;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .reload-info {
+            background: rgba(255, 165, 2, 0.1);
+            border: 1px solid rgba(255, 165, 2, 0.3);
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 16px;
+            text-align: center;
+            font-size: 13px;
+        }
+
+        .points-display {
+            background: rgba(255, 99, 72, 0.15);
+            padding: 10px 16px;
+            border-radius: 10px;
+            display: inline-block;
+            font-weight: 700;
+            font-size: 16px;
+            border: 1px solid rgba(255, 99, 72, 0.3);
+        }
+
+        .leaderboard {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .leaderboard-item {
+            background: rgba(255, 255, 255, 0.08);
+            padding: 16px 12px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            gap: 12px;
+        }
+
+        .leaderboard-rank {
+            font-size: clamp(18px, 5vw, 24px);
+            font-weight: 800;
+            color: #ff6348;
+            min-width: 35px;
+            flex-shrink: 0;
+        }
+
+        .leaderboard-name {
+            flex: 1;
+            font-weight: 600;
+            font-size: clamp(14px, 4vw, 18px);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            min-width: 0;
+        }
+
+        .leaderboard-points {
+            font-size: clamp(16px, 4.5vw, 20px);
+            font-weight: 700;
+            color: #ffd700;
+            white-space: nowrap;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div id="app"></div>
+    </div>
+
+    <!-- Modals -->
+    <div id="createModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-title">
+                <svg style="width: 32px; height: 32px; display: inline-block; vertical-align: middle; margin-right: 8px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#ff6348" stroke-width="8"/>
+                    <rect x="46" y="5" width="8" height="18" fill="#ff6348" rx="4"/>
+                    <rect x="77" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                    <rect x="46" y="77" width="8" height="18" fill="#ff6348" rx="4"/>
+                    <rect x="5" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                    <circle cx="50" cy="50" r="8" fill="#ff6348"/>
+                </svg>
+                Create Game
+            </div>
+            <label style="display: block; margin-bottom: 8px; font-size: 14px; font-weight: 600; opacity: 0.8;">Your Name</label>
+            <input type="text" id="createName" placeholder="Enter your name" class="modal-input" style="text-align: center;">
+            <button class="btn btn-primary" onclick="confirmCreate()">Create Game</button>
+            <button class="btn btn-secondary" onclick="closeModal('createModal')">Cancel</button>
+        </div>
+    </div>
+
+    <div id="eliminationModal" class="modal">
+        <div class="modal-content">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <svg style="width: 60px; height: 60px; display: block; margin: 0 auto 16px;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <circle cx="50" cy="50" r="35" fill="none" stroke="#ff4757" stroke-width="8"/>
+                    <rect x="46" y="5" width="8" height="18" fill="#ff4757" rx="4"/>
+                    <rect x="77" y="46" width="18" height="8" fill="#ff4757" rx="4"/>
+                    <rect x="46" y="77" width="8" height="18" fill="#ff4757" rx="4"/>
+                    <rect x="5" y="46" width="18" height="8" fill="#ff4757" rx="4"/>
+                    <circle cx="50" cy="50" r="8" fill="#ff4757"/>
+                </svg>
+            </div>
+            <div class="modal-title">Confirm Elimination</div>
+            <p id="eliminationMessage" style="margin-bottom: 24px; text-align: center; opacity: 0.8; line-height: 1.6; font-size: 16px;">
+            </p>
+            <button class="btn btn-success" onclick="confirmElimination()">Yes - I Got Eliminated</button>
+            <button class="btn btn-secondary" onclick="denyElimination()">No - I Didn't Say It</button>
+        </div>
+    </div>
+
+    <script>
+        // ======================
+        // FIREBASE CONFIGURATION
+        // ======================
+        
+        // ⚠️ IMPORTANT: Replace this with YOUR Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyAODpo5-Bg40oYE9RNkfrlNan03U_CAWok",
+    authDomain: "assassin-game-b4f4e.firebaseapp.com",
+    databaseURL: "https://assassin-game-b4f4e-default-rtdb.firebaseio.com",
+    projectId: "assassin-game-b4f4e",
+    storageBucket: "assassin-game-b4f4e.firebasestorage.app",
+    messagingSenderId: "946723749214",
+    appId: "1:946723749214:web:858182d9f404f79c4963cf"
+        };
+
+        // Initialize Firebase
+        let database;
+        let isFirebaseConfigured = false;
+
+        try {
+            if (firebaseConfig.apiKey !== "YOUR_API_KEY_HERE") {
+                firebase.initializeApp(firebaseConfig);
+                database = firebase.database();
+                isFirebaseConfigured = true;
+                console.log("✅ Firebase initialized successfully!");
+            } else {
+                console.warn("⚠️ Firebase not configured. Please add your config.");
+            }
+        } catch (error) {
+            console.error("Firebase initialization error:", error);
+        }
+
+        // ======================
+        // DEVICE ID GENERATION
+        // ======================
+        
+        let deviceId = null;
+
+        async function getDeviceId() {
+            if (deviceId) return deviceId;
+            
+            // Try to get from localStorage first
+            const stored = localStorage.getItem('assassin_device_id');
+            if (stored) {
+                deviceId = stored;
+                return deviceId;
+            }
+            
+            // Generate new device ID
+            try {
+                const fp = await FingerprintJS.load();
+                const result = await fp.get();
+                deviceId = result.visitorId;
+            } catch (error) {
+                // Fallback to random ID
+                deviceId = 'device_' + Math.random().toString(36).substr(2, 9) + Date.now();
+            }
+            
+            localStorage.setItem('assassin_device_id', deviceId);
+            return deviceId;
+        }
+
+        // ======================
+        // GAME STATE
+        // ======================
+        
+        let state = {
+            screen: 'home',
+            gameCode: '',
+            playerName: '',
+            myData: null,
+            isHost: false
+        };
+
+        const words = [
+            "Banana", "Unicorn", "Dragon", "Ninja", "Pirate", "Wizard", "Robot",
+            "Dinosaur", "Volcano", "Thunder", "Rainbow", "Sunset", "Ocean", "Mountain",
+            "Castle", "Kingdom", "Treasure", "Legend", "Mystery", "Adventure",
+            "Midnight", "Shadow", "Eclipse", "Crystal", "Diamond", "Phoenix",
+            "Galaxy", "Planet", "Comet", "Rocket", "Satellite", "Telescope",
+            "Tornado", "Hurricane", "Blizzard", "Earthquake", "Avalanche", "Lightning",
+            "Penguin", "Dolphin", "Elephant", "Giraffe", "Kangaroo", "Octopus",
+            "Butterfly", "Dragonfly", "Jellyfish", "Flamingo", "Peacock", "Toucan",
+            "Pyramid", "Sphinx", "Temple", "Monument", "Cathedral", "Fortress",
+            "Compass", "Anchor", "Lighthouse", "Submarine", "Parachute", "Helicopter",
+            "Guitar", "Piano", "Violin", "Trumpet", "Saxophone", "Harmonica",
+            "Carnival", "Festival", "Parade", "Concert", "Symphony", "Theater",
+            "Puzzle", "Riddle", "Clue", "Secret", "Mystery", "Mission",
+            "Victory", "Champion", "Trophy", "Medal", "Prize", "Award",
+            "Jungle", "Desert", "Tundra", "Savanna", "Meadow", "Valley",
+            "Glacier", "Iceberg", "Canyon", "Cavern", "Waterfall", "Rapids",
+            "Emerald", "Ruby", "Sapphire", "Pearl", "Amber", "Jade",
+            "Potion", "Spell", "Magic", "Wand", "Cauldron", "Enchantment",
+            "Knight", "Archer", "Warrior", "Guardian", "Sentinel", "Hero",
+            "Quest", "Journey", "Voyage", "Expedition", "Odyssey", "Trek",
+            "Crown", "Scepter", "Throne", "Palace", "Manor", "Estate",
+            "Labyrinth", "Maze", "Dungeon", "Chamber", "Vault", "Arsenal",
+            "Anthem", "Melody", "Harmony", "Rhythm", "Tempo", "Chorus",
+            "Marble", "Granite", "Bronze", "Silver", "Platinum", "Copper",
+            "Falcon", "Eagle", "Hawk", "Raven", "Owl", "Parrot",
+            "Mirage", "Oasis", "Dune", "Mesa", "Plateau", "Summit",
+            "Colossal", "Gigantic", "Miniature", "Enormous", "Ancient", "Modern",
+            
+            // Famous Locations
+            "Paris", "London", "Tokyo", "Egypt", "Italy", "Greece", "Brazil",
+            "Australia", "Canada", "Mexico", "Spain", "China", "India", "Russia",
+            "Hawaii", "Alaska", "Texas", "California", "Florida", "Vegas",
+            "Disney", "Hollywood", "Broadway", "Amazon", "Sahara", "Everest",
+            "Niagara", "Manhattan", "Venice", "Rome", "Athens", "Beijing",
+            
+            // Very Famous People
+            "Einstein", "Shakespeare", "Mozart", "Picasso", "Tesla", "Lincoln",
+            "Washington", "Napoleon", "Cleopatra", "Caesar", "Columbus", "Edison",
+            "DaVinci", "Beethoven", "Newton", "Darwin", "Galileo", "Michelangelo",
+            
+            // Household Items
+            "Toaster", "Blender", "Microwave", "Refrigerator", "Oven", "Dishwasher",
+            "Vacuum", "Pillow", "Blanket", "Curtain", "Mirror", "Lamp",
+            "Couch", "Recliner", "Bookshelf", "Dresser", "Nightstand", "Cabinet",
+            "Scissors", "Stapler", "Notebook", "Calendar", "Clock", "Remote",
+            "Kettle", "Spatula", "Whisk", "Grater", "Colander", "Thermostat",
+            "Doorbell", "Mailbox", "Garage", "Attic", "Basement", "Porch",
+            "Chandelier", "Candle", "Vase", "Picture", "Painting", "Rug",
+            "Shower", "Bathtub", "Sink", "Faucet", "Towel", "Soap",
+            "Shampoo", "Toothbrush", "Hairdryer", "Iron", "Hanger", "Laundry"
+        ];
+
+        function $(id) {
+            return document.getElementById(id);
+        }
+
+        function showAlert(message) {
+            const alertBox = document.createElement('div');
+            alertBox.style.cssText = `
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: rgba(26, 10, 10, 0.98);
+                backdrop-filter: blur(10px);
+                padding: 32px;
+                border-radius: 20px;
+                border: 1px solid rgba(255, 71, 87, 0.3);
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+                z-index: 10001;
+                color: white;
+                text-align: center;
+                max-width: 400px;
+                width: 90%;
+                animation: modalSlideUp 0.3s;
+            `;
+            alertBox.innerHTML = `
+                <div style="font-size: 18px; font-weight: 600; margin-bottom: 20px; line-height: 1.5;">
+                    ${message}
+                </div>
+                <button onclick="this.parentElement.remove()" style="
+                    background: linear-gradient(135deg, #ff4757 0%, #ff6348 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 32px;
+                    border-radius: 10px;
+                    font-size: 16px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    font-family: 'Inter', sans-serif;
+                ">OK</button>
+            `;
+            document.body.appendChild(alertBox);
+        }
+
+        function randomCode() {
+            return Math.floor(1000 + Math.random() * 9000).toString();
+        }
+
+        function shuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // ======================
+        // FIREBASE DATABASE FUNCTIONS
+        // ======================
+
+        function getGame(code, callback) {
+            if (!isFirebaseConfigured) {
+                showAlert("Firebase is not configured. Please add your Firebase config to the code.");
+                return;
+            }
+            
+            database.ref('games/' + code).once('value', (snapshot) => {
+                callback(snapshot.val());
+            });
+        }
+
+        function saveGame(code, data) {
+            if (!isFirebaseConfigured) {
+                showAlert("Firebase is not configured. Please add your Firebase config to the code.");
+                return;
+            }
+            
+            database.ref('games/' + code).set(data);
+        }
+
+        function watchGame(code, callback) {
+            if (!isFirebaseConfigured) return;
+            
+            database.ref('games/' + code).on('value', (snapshot) => {
+                callback(snapshot.val());
+            });
+        }
+
+        function unwatchGame(code) {
+            if (!isFirebaseConfigured) return;
+            
+            database.ref('games/' + code).off();
+        }
+
+        function openModal(id) {
+            $(id).classList.add('active');
+        }
+
+        function closeModal(id) {
+            $(id).classList.remove('active');
+        }
+
+        // ======================
+        // SCREENS
+        // ======================
+        
+        function showHome() {
+            const configWarning = !isFirebaseConfigured ? `
+                <div class="firebase-notice">
+                    ⚠️ <strong>Firebase Not Configured</strong><br>
+                    Please add your Firebase config to enable multiplayer.
+                </div>
+            ` : '';
+
+            $('app').innerHTML = `
+                ${configWarning}
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <svg class="crosshair-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#ff6348" stroke-width="8"/>
+                        <rect x="46" y="5" width="8" height="18" fill="#ff6348" rx="4"/>
+                        <rect x="77" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                        <rect x="46" y="77" width="8" height="18" fill="#ff6348" rx="4"/>
+                        <rect x="5" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                        <circle cx="50" cy="50" r="8" fill="#ff6348"/>
+                    </svg>
+                </div>
+                <h1>Assassin</h1>
+                <p class="subtitle">The Game Where Words Kill</p>
+                
+                <button class="btn btn-primary" onclick="openModal('createModal')">Create New Game</button>
+                
+                <div class="divider">OR</div>
+                
+                <input type="text" id="joinCode" placeholder="Game Code" maxlength="4" 
+                    style="text-align: center; letter-spacing: 3px;">
+                <input type="text" id="joinName" placeholder="Your Name" style="text-align: center;">
+                <button class="btn btn-success" onclick="joinGame()">Join Game</button>
+                
+                <div class="tip">
+                    <strong>How to play:</strong> Get your target to say your secret word. Earn 5 points per elimination. Use Reload to change your word (max 2 times, reduces points). Last player standing + highest points wins!
+                </div>
+            `;
+        }
+
+        function showLobby(game) {
+            const playerList = game.players.map(p => 
+                `<div class="player-item">
+                    <span>${p.name}</span>
+                    <span class="player-points">${p.points || 0} pts</span>
+                </div>`
+            ).join('');
+
+            $('app').innerHTML = `
+                <h1>Game Lobby</h1>
+                <div class="game-code">${state.gameCode}</div>
+                <p class="subtitle">Share this code with players</p>
+                
+                <div class="player-list">
+                    <div class="player-list-header">
+                        <div class="player-list-title">Players</div>
+                        <div class="player-count">${game.players.length}</div>
+                    </div>
+                    ${playerList}
+                </div>
+                
+                ${state.isHost ? `
+                    <button class="btn btn-success" onclick="startGame()" 
+                        ${game.players.length < 2 ? 'disabled' : ''}>
+                        Start Game ${game.players.length < 2 ? '(Need 2+ players)' : ''}
+                    </button>
+                    <button class="btn btn-secondary" onclick="cancelGame()">Cancel</button>
+                ` : `
+                    <div class="info-box">
+                        Waiting for host to start the game...
+                    </div>
+                `}
+            `;
+        }
+
+        function showPlaying(game) {
+            const me = game.players.find(p => p.name === state.playerName);
+            const alive = game.players.filter(p => !p.dead).length;
+            const pointValue = me.reloads === 0 ? 5 : (me.reloads === 1 ? 4 : 3);
+            const reloadsLeft = 2 - (me.reloads || 0);
+
+            $('app').innerHTML = `
+                <h1>${state.playerName}</h1>
+                <div style="display: flex; flex-direction: column; gap: 10px; align-items: center; margin: 16px 0 24px 0;">
+                    <span class="status-badge">
+                        <span class="status-dot"></span>
+                        ACTIVE
+                    </span>
+                    <span class="points-display">${me.points || 0} Points</span>
+                </div>
+                
+                ${reloadsLeft > 0 ? `
+                    <div class="reload-info">
+                        🔄 <strong>${reloadsLeft} Reload${reloadsLeft > 1 ? 's' : ''} Left</strong> • Next kill worth: ${pointValue} points
+                    </div>
+                ` : `
+                    <div class="reload-info" style="background: rgba(235, 51, 73, 0.1); border-color: rgba(235, 51, 73, 0.3);">
+                        ❌ <strong>No Reloads Left</strong> • Next kill worth: ${pointValue} points
+                    </div>
+                `}
+                
+                <div class="mission-box">
+                    <div class="mission-title">YOUR MISSION</div>
+                    <div class="mission-card">
+                        <div class="mission-label">Target</div>
+                        <div class="target">${me.target}</div>
+                    </div>
+                    <div class="mission-card" style="margin-bottom: 0;">
+                        <div class="mission-label">Get them to say</div>
+                        <div style="display: flex; justify-content: center; align-items: center; min-height: 60px;">
+                            <div class="word" id="targetWord">${me.word}</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-success" onclick="openEliminationModal()">
+                    ✓ They Said It!
+                </button>
+                
+                ${reloadsLeft > 0 ? `
+                    <button class="btn btn-warning" onclick="reloadWord()">
+                        🔄 Reload Word (${reloadsLeft} left)
+                    </button>
+                ` : ''}
+                
+                <div class="stats">
+                    <div class="stat-box">
+                        <div class="stat-value">${alive}</div>
+                        <div class="stat-label">Players Left</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${me.points || 0}</div>
+                        <div class="stat-label">Your Points</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-value">${game.kills || 0}</div>
+                        <div class="stat-label">Total Kills</div>
+                    </div>
+                </div>
+                
+                <div class="tip">
+                    💡 <strong>Pro tip:</strong> Work the word naturally into conversation. Be subtle!
+                </div>
+
+                <div class="code-display-bottom">Game Code: ${state.gameCode}</div>
+            `;
+
+            // Scale word if too long
+            scaleWordIfNeeded();
+        }
+
+        function scaleWordIfNeeded() {
+            const wordElement = document.getElementById('targetWord');
+            if (!wordElement) return;
+
+            const container = wordElement.parentElement;
+            
+            // Reset any previous scaling
+            wordElement.style.transform = 'scale(1)';
+            wordElement.style.transformOrigin = 'center center';
+            
+            // Force a reflow to ensure accurate measurements
+            void wordElement.offsetWidth;
+            
+            // Use requestAnimationFrame for accurate measurements after render
+            requestAnimationFrame(() => {
+                const wordWidth = wordElement.offsetWidth;
+                const containerWidth = container.clientWidth - 40; // Account for padding
+                
+                if (wordWidth > containerWidth) {
+                    const scale = containerWidth / wordWidth;
+                    const finalScale = Math.max(0.35, Math.min(1, scale)); // Between 35% and 100%
+                    wordElement.style.transform = `scale(${finalScale})`;
+                    wordElement.style.display = 'inline-block';
+                }
+            });
+        }
+
+        function showDead() {
+            getGame(state.gameCode, (game) => {
+                if (!game) return;
+                
+                const alivePlayers = game.players.filter(p => !p.dead);
+                
+                const playerList = alivePlayers.map(p => `
+                    <div class="player-detail">
+                        <div class="player-name">${p.name} - ${p.points || 0} pts</div>
+                        <div class="player-info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Target</div>
+                                <div class="info-value" style="color: #eb3349;">${p.target}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Word</div>
+                                <div class="info-value" style="color: #ff4757;">${p.word}</div>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+
+                $('app').innerHTML = `
+                    <div class="icon">💀</div>
+                    <h1>Eliminated</h1>
+                    <p class="subtitle">You've been caught</p>
+                    
+                    <div class="eliminated-screen" style="padding: 24px; border-radius: 16px; margin: 24px 0; text-align: center;">
+                        <p style="font-size: 16px; opacity: 0.9;">
+                            You said the word and got eliminated!
+                        </p>
+                    </div>
+                    
+                    <div style="margin: 24px 0;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                            <h2 style="font-size: 20px; font-weight: 700;">Active Players</h2>
+                            <div class="player-count">${alivePlayers.length}</div>
+                        </div>
+                        ${playerList}
+                    </div>
+                    
+                    <p style="text-align: center; color: rgba(255,255,255,0.5); font-size: 14px;">
+                        👁️ You can now see everyone's missions
+                    </p>
+
+                    <div class="code-display-bottom">Game Code: ${state.gameCode}</div>
+                `;
+            });
+        }
+
+        function showWinner() {
+            getGame(state.gameCode, (game) => {
+                if (!game) return;
+                
+                const lastStanding = game.winner || state.playerName;
+                const sortedByPoints = [...game.players].sort((a, b) => (b.points || 0) - (a.points || 0));
+                const highestPoints = sortedByPoints[0];
+                const isLastStanding = lastStanding === state.playerName;
+                const isHighestPoints = highestPoints.name === state.playerName;
+                
+                const leaderboard = sortedByPoints.slice(0, 5).map((p, i) => `
+                    <div class="leaderboard-item">
+                        <div class="leaderboard-rank">#${i + 1}</div>
+                        <div class="leaderboard-name">${p.name}${p.name === lastStanding ? ' 👑' : ''}</div>
+                        <div class="leaderboard-points">${p.points || 0} pts</div>
+                    </div>
+                `).join('');
+                
+                const crosshairSVG = `
+                    <svg style="width: 80px; height: 80px; display: block; margin: 0 auto;" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <circle cx="50" cy="50" r="35" fill="none" stroke="#ff6348" stroke-width="8"/>
+                        <rect x="46" y="5" width="8" height="18" fill="#ff6348" rx="4"/>
+                        <rect x="77" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                        <rect x="46" y="77" width="8" height="18" fill="#ff6348" rx="4"/>
+                        <rect x="5" y="46" width="18" height="8" fill="#ff6348" rx="4"/>
+                        <circle cx="50" cy="50" r="8" fill="#ff6348"/>
+                    </svg>
+                `;
+                
+                $('app').innerHTML = `
+                    <div class="icon">${isLastStanding || isHighestPoints ? '👑' : ''}</div>
+                    ${!isLastStanding && !isHighestPoints ? crosshairSVG : ''}
+                    <h1>GAME OVER</h1>
+                    <p class="subtitle">${isLastStanding || isHighestPoints ? 'You are a champion!' : 'Winners announced'}</p>
+                    
+                    <div class="winner-screen" style="padding: 30px; border-radius: 20px; margin: 24px 0; text-align: center;">
+                        <div style="margin-bottom: 20px;">
+                            <div style="font-size: 14px; opacity: 0.7; margin-bottom: 8px;">🏆 Last Standing</div>
+                            <div style="font-size: 28px; font-weight: 800; color: #ff4757;">
+                                ${lastStanding}
+                            </div>
+                        </div>
+                        <div style="border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 20px;">
+                            <div style="font-size: 14px; opacity: 0.7; margin-bottom: 8px;">🎯 Highest Points</div>
+                            <div style="font-size: 28px; font-weight: 800; color: #ffd700;">
+                                ${highestPoints.name}
+                            </div>
+                            <div style="font-size: 18px; margin-top: 8px; opacity: 0.8;">
+                                ${highestPoints.points || 0} points
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="leaderboard">
+                        <div style="font-weight: 700; font-size: 18px; margin-bottom: 16px; text-align: center;">Final Leaderboard</div>
+                        ${leaderboard}
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="playAgain()">
+                        ${isLastStanding || isHighestPoints ? 'Play Again' : 'Back to Home'}
+                    </button>
+                `;
+            });
+        }
+
+        // ======================
+        // ACTIONS
+        // ======================
+        
+        async function confirmCreate() {
+            const name = $('createName').value.trim();
+            
+            if (!name) {
+                showAlert('Please enter your name!');
+                return;
+            }
+            
+            const devId = await getDeviceId();
+            const code = randomCode();
+            const game = {
+                code: code,
+                host: name,
+                players: [{
+                    name: name,
+                    deviceId: devId,
+                    target: null,
+                    word: null,
+                    dead: false,
+                    points: 0,
+                    reloads: 0
+                }],
+                started: false,
+                kills: 0
+            };
+            saveGame(code, game);
+            
+            state.gameCode = code;
+            state.playerName = name;
+            state.isHost = true;
+            state.screen = 'lobby';
+            
+            localStorage.setItem('myLastGame', JSON.stringify({
+                code: code,
+                name: name,
+                deviceId: devId,
+                isHost: true
+            }));
+            
+            closeModal('createModal');
+            showLobby(game);
+            startWatching();
+        }
+
+        async function joinGame() {
+            const code = $('joinCode').value.trim();
+            const name = $('joinName').value.trim();
+            
+            if (!code || !name) {
+                showAlert('Please fill in all fields!');
+                return;
+            }
+            
+            const devId = await getDeviceId();
+            
+            getGame(code, (game) => {
+                if (!game) {
+                    showAlert('Game not found!');
+                    return;
+                }
+                
+                const existingPlayer = game.players.find(p => p.deviceId === devId);
+                if (existingPlayer) {
+                    // Rejoin with device ID
+                    state.gameCode = code;
+                    state.playerName = existingPlayer.name;
+                    state.isHost = (game.host === existingPlayer.name);
+                    
+                    localStorage.setItem('myLastGame', JSON.stringify({
+                        code: code,
+                        name: existingPlayer.name,
+                        deviceId: devId,
+                        isHost: state.isHost
+                    }));
+                    
+                    if (!game.started) {
+                        state.screen = 'lobby';
+                        showLobby(game);
+                    } else if (existingPlayer.dead) {
+                        state.screen = 'dead';
+                        showDead();
+                    } else {
+                        const alive = game.players.filter(p => !p.dead);
+                        if (alive.length === 1 && !existingPlayer.dead) {
+                            state.screen = 'winner';
+                            showWinner();
+                        } else {
+                            state.screen = 'playing';
+                            showPlaying(game);
+                        }
+                    }
+                    
+                    startWatching();
+                    return;
+                }
+                
+                if (game.started) {
+                    showAlert('Game already started!');
+                    return;
+                }
+                
+                if (game.players.find(p => p.name === name)) {
+                    showAlert('Name already taken!');
+                    return;
+                }
+                
+                game.players.push({
+                    name: name,
+                    deviceId: devId,
+                    target: null,
+                    word: null,
+                    dead: false,
+                    points: 0,
+                    reloads: 0
+                });
+                saveGame(code, game);
+                
+                state.gameCode = code;
+                state.playerName = name;
+                state.screen = 'lobby';
+                
+                localStorage.setItem('myLastGame', JSON.stringify({
+                    code: code,
+                    name: name,
+                    deviceId: devId,
+                    isHost: false
+                }));
+                
+                showLobby(game);
+                startWatching();
+            });
+        }
+
+        function openEliminationModal() {
+            getGame(state.gameCode, (game) => {
+                const me = game.players.find(p => p.name === state.playerName);
+                const target = game.players.find(p => p.name === me.target);
+                
+                if (!target || target.dead) {
+                    showAlert('Target already eliminated!');
+                    return;
+                }
+                
+                // Create pending elimination
+                game.pendingElimination = {
+                    assassin: state.playerName,
+                    target: me.target,
+                    word: me.word,
+                    points: me.reloads === 0 ? 5 : (me.reloads === 1 ? 4 : 3)
+                };
+                saveGame(state.gameCode, game);
+                
+                const notification = document.createElement('div');
+                notification.style.cssText = `
+                    position: fixed;
+                    top: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    background: rgba(26, 10, 10, 0.98);
+                    backdrop-filter: blur(10px);
+                    padding: 20px 32px;
+                    border-radius: 16px;
+                    border: 1px solid rgba(255, 71, 87, 0.3);
+                    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.6);
+                    z-index: 10000;
+                    animation: slideDown 0.3s ease-out;
+                    color: white;
+                    text-align: center;
+                    max-width: 90%;
+                `;
+                notification.innerHTML = `
+                    <div style="font-size: 16px; font-weight: 600; margin-bottom: 4px;">🎯 Elimination Sent</div>
+                    <div style="font-size: 14px; opacity: 0.8;">Waiting for ${me.target} to confirm...</div>
+                `;
+                document.body.appendChild(notification);
+                
+                setTimeout(() => {
+                    notification.style.animation = 'slideUp 0.3s ease-out';
+                    setTimeout(() => notification.remove(), 300);
+                }, 3000);
+            });
+        }
+
+        function confirmElimination() {
+            getGame(state.gameCode, (game) => {
+                const pending = game.pendingElimination;
+                const assassin = game.players.find(p => p.name === pending.assassin);
+                const target = game.players.find(p => p.name === pending.target);
+                
+                if (!target || target.dead) {
+                    showAlert('Target already eliminated!');
+                    delete game.pendingElimination;
+                    saveGame(state.gameCode, game);
+                    closeModal('eliminationModal');
+                    return;
+                }
+                
+                // Process elimination
+                target.dead = true;
+                assassin.target = target.target;
+                assassin.word = target.word;
+                assassin.points = (assassin.points || 0) + pending.points;
+                game.kills = (game.kills || 0) + 1;
+                
+                const alive = game.players.filter(p => !p.dead);
+                if (alive.length === 1) {
+                    game.winner = alive[0].name;
+                }
+                
+                delete game.pendingElimination;
+                saveGame(state.gameCode, game);
+                closeModal('eliminationModal');
+                
+                if (alive.length === 1) {
+                    state.screen = 'winner';
+                    showWinner();
+                } else {
+                    state.screen = 'dead';
+                    showDead();
+                }
+            });
+        }
+
+        function denyElimination() {
+            getGame(state.gameCode, (game) => {
+                delete game.pendingElimination;
+                saveGame(state.gameCode, game);
+                closeModal('eliminationModal');
+            });
+        }
+
+        function reloadWord() {
+            getGame(state.gameCode, (game) => {
+                const me = game.players.find(p => p.name === state.playerName);
+                
+                if ((me.reloads || 0) >= 2) {
+                    showAlert('You have used all your reloads!');
+                    return;
+                }
+                
+                // Get new word (different from current)
+                let newWord;
+                do {
+                    newWord = words[Math.floor(Math.random() * words.length)];
+                } while (newWord === me.word);
+                
+                me.word = newWord;
+                me.reloads = (me.reloads || 0) + 1;
+                
+                saveGame(state.gameCode, game);
+                showPlaying(game);
+                
+                showAlert(`Word reloaded! New word: ${newWord}\n\nReloads left: ${2 - me.reloads}\nNext kill worth: ${me.reloads === 1 ? 4 : 3} points`);
+            });
+        }
+
+        function startGame() {
+            getGame(state.gameCode, (game) => {
+                if (game.players.length < 2) {
+                    showAlert('Need at least 2 players!');
+                    return;
+                }
+                
+                const shuffled = shuffle([...game.players]);
+                const usedWords = new Set();
+                
+                shuffled.forEach((player, i) => {
+                    const nextPlayer = shuffled[(i + 1) % shuffled.length];
+                    player.target = nextPlayer.name;
+                    
+                    let word;
+                    do {
+                        word = words[Math.floor(Math.random() * words.length)];
+                    } while (usedWords.has(word));
+                    usedWords.add(word);
+                    
+                    player.word = word;
+                    player.points = 0;
+                    player.reloads = 0;
+                });
+                
+                game.players = shuffled;
+                game.started = true;
+                saveGame(state.gameCode, game);
+            });
+        }
+
+        function cancelGame() {
+            if (isFirebaseConfigured) {
+                database.ref('games/' + state.gameCode).remove();
+            }
+            playAgain();
+        }
+
+        function playAgain() {
+            if (state.gameCode) {
+                unwatchGame(state.gameCode);
+            }
+            localStorage.removeItem('myLastGame');
+            state = {
+                screen: 'home',
+                gameCode: '',
+                playerName: '',
+                myData: null,
+                isHost: false
+            };
+            showHome();
+        }
+
+        // ======================
+        // REAL-TIME SYNC
+        // ======================
+
+        function startWatching() {
+            if (!isFirebaseConfigured) return;
+            
+            watchGame(state.gameCode, (game) => {
+                if (!game) {
+                    showAlert('Game has been deleted!');
+                    playAgain();
+                    return;
+                }
+                
+                const me = game.players.find(p => p.name === state.playerName);
+                
+                // Check if there's a pending elimination for this player
+                if (game.pendingElimination && 
+                    game.pendingElimination.target === state.playerName && 
+                    !$('eliminationModal').classList.contains('active')) {
+                    $('eliminationMessage').textContent = `${game.pendingElimination.assassin} claims you said their target word. Did you say it?`;
+                    openModal('eliminationModal');
+                }
+                
+                // Check if there's a winner
+                if (game.winner && state.screen !== 'winner') {
+                    state.screen = 'winner';
+                    showWinner();
+                } else if (game.started && me && !me.dead && state.screen !== 'playing' && !game.winner) {
+                    state.screen = 'playing';
+                    showPlaying(game);
+                } else if (me && me.dead && state.screen !== 'dead' && !game.winner) {
+                    state.screen = 'dead';
+                    showDead();
+                } else if (state.screen === 'lobby') {
+                    showLobby(game);
+                } else if (state.screen === 'playing' && !game.winner) {
+                    showPlaying(game);
+                } else if (state.screen === 'dead' && !game.winner) {
+                    showDead();
+                }
+            });
+        }
+
+        // Initialize
+        showHome();
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered:', registration);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+
+        // PWA Install Prompt
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            console.log('💾 PWA install prompt available');
+        });
+    </script>
+</body>
+</html>
