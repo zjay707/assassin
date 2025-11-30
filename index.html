@@ -4,22 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Assassin - The Game Where Words Kill</title>
-    
-    <!-- PWA Meta Tags -->
-    <meta name="description" content="The social deduction game where words can kill. Get your target to say your secret word!">
-    <meta name="theme-color" content="#ff4757">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="Assassin">
-    
-    <!-- Manifest -->
-    <link rel="manifest" href="manifest.json">
-    
-    <!-- Icons -->
-    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
-    <link rel="icon" type="image/png" sizes="512x512" href="icon-512.png">
-    <link rel="apple-touch-icon" href="icon-192.png">
-    
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     
     <!-- Firebase SDK -->
@@ -846,7 +830,7 @@
         
         // ⚠️ IMPORTANT: Replace this with YOUR Firebase config
         const firebaseConfig = {
-            apiKey: "AIzaSyAODpo5-Bg40oYE9RNkfrlNan03U_CAWok",
+      apiKey: "AIzaSyAODpo5-Bg40oYE9RNkfrlNan03U_CAWok",
     authDomain: "assassin-game-b4f4e.firebaseapp.com",
     databaseURL: "https://assassin-game-b4f4e-default-rtdb.firebaseio.com",
     projectId: "assassin-game-b4f4e",
@@ -1149,8 +1133,11 @@
         function showPlaying(game) {
             const me = game.players.find(p => p.name === state.playerName);
             const alive = game.players.filter(p => !p.dead).length;
-            const pointValue = me.reloads === 0 ? 5 : (me.reloads === 1 ? 4 : 3);
-            const reloadsLeft = 2 - (me.reloads || 0);
+            
+            // Calculate point value based on reloads: 5, 4, 3, 2, 1
+            const pointValues = [5, 4, 3, 2, 1];
+            const pointValue = pointValues[me.reloads] || 1;
+            const reloadsLeft = 4 - (me.reloads || 0);
 
             $('app').innerHTML = `
                 <h1>${state.playerName}</h1>
@@ -1168,7 +1155,7 @@
                     </div>
                 ` : `
                     <div class="reload-info" style="background: rgba(235, 51, 73, 0.1); border-color: rgba(235, 51, 73, 0.3);">
-                        ❌ <strong>No Reloads Left</strong> • Next kill worth: ${pointValue} points
+                        ❌ <strong>No Reloads Left</strong> • Next kill worth: ${pointValue} point${pointValue > 1 ? 's' : ''}
                     </div>
                 `}
                 
@@ -1570,6 +1557,10 @@
                 assassin.target = target.target;
                 assassin.word = target.word;
                 assassin.points = (assassin.points || 0) + pending.points;
+                
+                // RESET RELOADS - Assassin gets fresh reloads for new target
+                assassin.reloads = 0;
+                
                 game.kills = (game.kills || 0) + 1;
                 
                 const alive = game.players.filter(p => !p.dead);
@@ -1603,7 +1594,7 @@
             getGame(state.gameCode, (game) => {
                 const me = game.players.find(p => p.name === state.playerName);
                 
-                if ((me.reloads || 0) >= 2) {
+                if ((me.reloads || 0) >= 4) {
                     showAlert('You have used all your reloads!');
                     return;
                 }
@@ -1617,10 +1608,13 @@
                 me.word = newWord;
                 me.reloads = (me.reloads || 0) + 1;
                 
+                const pointValues = [5, 4, 3, 2, 1];
+                const nextPointValue = pointValues[me.reloads] || 1;
+                
                 saveGame(state.gameCode, game);
                 showPlaying(game);
                 
-                showAlert(`Word reloaded! New word: ${newWord}\n\nReloads left: ${2 - me.reloads}\nNext kill worth: ${me.reloads === 1 ? 4 : 3} points`);
+                showAlert(`Word reloaded! New word: ${newWord}\n\nReloads left: ${4 - me.reloads}\nNext kill worth: ${nextPointValue} point${nextPointValue > 1 ? 's' : ''}`);
             });
         }
 
@@ -1697,7 +1691,14 @@
                 if (game.pendingElimination && 
                     game.pendingElimination.target === state.playerName && 
                     !$('eliminationModal').classList.contains('active')) {
-                    $('eliminationMessage').textContent = `${game.pendingElimination.assassin} claims you said their target word. Did you say it?`;
+                    $('eliminationMessage').innerHTML = `
+                        <strong>${game.pendingElimination.assassin}</strong> claims you said their target word.<br><br>
+                        <div style="background: rgba(255, 71, 87, 0.15); padding: 16px; border-radius: 12px; margin: 16px 0; border: 1px solid rgba(255, 71, 87, 0.3);">
+                            <div style="font-size: 14px; opacity: 0.7; margin-bottom: 8px;">The word was:</div>
+                            <div style="font-size: 24px; font-weight: 800; color: #ff4757;">${game.pendingElimination.word}</div>
+                        </div>
+                        Did you say this word?
+                    `;
                     openModal('eliminationModal');
                 }
                 
@@ -1723,27 +1724,6 @@
 
         // Initialize
         showHome();
-
-        // Register Service Worker for PWA
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('service-worker.js')
-                    .then(registration => {
-                        console.log('✅ Service Worker registered:', registration);
-                    })
-                    .catch(error => {
-                        console.log('❌ Service Worker registration failed:', error);
-                    });
-            });
-        }
-
-        // PWA Install Prompt
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            console.log('💾 PWA install prompt available');
-        });
     </script>
 </body>
 </html>
