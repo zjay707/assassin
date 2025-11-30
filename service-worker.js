@@ -1,4 +1,4 @@
-const CACHE_NAME = 'assassin-game-v2';
+const CACHE_NAME = 'assassin-game-v5';
 const urlsToCache = [
   './',
   './index.html',
