@@ -803,7 +803,7 @@
 
     <!-- Main App -->
     <div id="app">
-        <div class="screen hidden" id="logoScreen">
+        <div class="screen" id="logoScreen">
             <!-- Crosshairs Logo -->
             <svg class="crosshair-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#ff4757" stroke-width="2"/>
@@ -818,6 +818,7 @@
             
             <h1>ASSASSIN</h1>
             <p class="subtitle">The Game Where Words Kill</p>
+            <div id="loadingText" style="margin-top: 20px; color: #ffa502; font-size: 14px;"></div>
         </div>
 
         <!-- Auth Screen -->
@@ -1298,6 +1299,21 @@
         if (wasSigningIn) {
             console.log('🔄 Returning from Google redirect...');
             isSigningIn = true;
+            
+            // Show loading screen with message
+            document.getElementById('logoScreen').classList.remove('hidden');
+            document.getElementById('loadingText').textContent = 'Signing in with Google...';
+            
+            // Safety timeout: if sign-in takes more than 10 seconds, show login screen
+            setTimeout(() => {
+                if (isSigningIn && !currentUser) {
+                    console.warn('⚠️ Sign-in timeout - forcing login screen');
+                    localStorage.removeItem('googleSignInInProgress');
+                    isSigningIn = false;
+                    document.getElementById('loadingText').textContent = '';
+                    showAuthScreen();
+                }
+            }, 10000);
         }
         
         // Handle redirect result (for mobile Google sign-in)
@@ -1308,21 +1324,28 @@
                 console.log('✅ Successfully signed in via redirect!');
                 console.log('User:', result.user.email || result.user.displayName);
                 console.log('UID:', result.user.uid);
+                
+                document.getElementById('loadingText').textContent = 'Sign in successful! Loading...';
+                
                 localStorage.removeItem('googleSignInInProgress');
                 isSigningIn = false;
                 // onAuthStateChanged will handle navigation to menu
             } else if (wasSigningIn) {
                 console.log('⚠️ No user in redirect result (might have cancelled)');
+                document.getElementById('loadingText').textContent = '';
                 localStorage.removeItem('googleSignInInProgress');
                 isSigningIn = false;
             } else {
                 console.log('ℹ️ No redirect in progress');
+                document.getElementById('loadingText').textContent = '';
                 isSigningIn = false;
             }
         }).catch(error => {
             console.error('❌ Redirect sign-in error:', error);
             console.error('Error code:', error.code);
             console.error('Error message:', error.message);
+            
+            document.getElementById('loadingText').textContent = '';
             localStorage.removeItem('googleSignInInProgress');
             isSigningIn = false;
             
