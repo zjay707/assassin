@@ -1244,6 +1244,18 @@
         
         // ===== FIREBASE AUTHENTICATION =====
         
+        // Handle redirect result (for mobile Google sign-in)
+        auth.getRedirectResult().then(result => {
+            if (result.user) {
+                console.log('Signed in via redirect:', result.user.email);
+            }
+        }).catch(error => {
+            console.error('Redirect sign-in error:', error);
+            if (error.code !== 'auth/popup-closed-by-user') {
+                showAuthError(getErrorMessage(error.code));
+            }
+        });
+        
         // Listen for auth state changes
         auth.onAuthStateChanged(user => {
             if (user) {
@@ -1281,11 +1293,27 @@
         async function signInWithGoogle() {
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
-                await auth.signInWithPopup(provider);
+                
+                // Use redirect on mobile, popup on desktop
+                if (window.Capacitor || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                    await auth.signInWithRedirect(provider);
+                } else {
+                    await auth.signInWithPopup(provider);
+                }
                 // onAuthStateChanged will handle the rest
             } catch (error) {
                 console.error('Google sign in error:', error);
-                showAuthError(getErrorMessage(error.code));
+                console.error('Error code:', error.code);
+                console.error('Error message:', error.message);
+                
+                // Show user-friendly error
+                if (error.code === 'auth/popup-closed-by-user') {
+                    showAuthError('Sign-in cancelled. Please try again.');
+                } else if (error.code === 'auth/popup-blocked') {
+                    showAuthError('Pop-up blocked! Please allow pop-ups and try again.');
+                } else {
+                    showAuthError(getErrorMessage(error.code));
+                }
             }
         }
         
@@ -1389,11 +1417,15 @@
                 'auth/wrong-password': 'Incorrect password. Please try again.',
                 'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
                 'auth/network-request-failed': 'Network error. Please check your connection.',
-                'auth/popup-closed-by-user': 'Sign in cancelled.',
-                'auth/cancelled-popup-request': 'Sign in cancelled.'
+                'auth/popup-closed-by-user': 'Sign-in cancelled.',
+                'auth/cancelled-popup-request': 'Sign-in cancelled.',
+                'auth/popup-blocked': 'Pop-up blocked! Please allow pop-ups for this site.',
+                'auth/operation-not-allowed': 'This sign-in method is not enabled. Please contact support.',
+                'auth/unauthorized-domain': 'This domain is not authorized. Please contact support.',
+                'auth/operation-not-supported-in-this-environment': 'Please use http:// or https:// URL (not file://)'
             };
             
-            return errorMessages[code] || 'An error occurred. Please try again.';
+            return errorMessages[code] || `Error: ${code}. Please try again or contact support.`;
         }
 
         // ===== SCREEN NAVIGATION =====
