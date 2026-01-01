@@ -634,6 +634,31 @@
             height: 20px;
         }
         
+        /* Hamburger Menu */
+        .hamburger-menu {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 30px;
+            height: 24px;
+            cursor: pointer;
+            z-index: 100;
+            padding: 5px;
+        }
+        
+        .hamburger-line {
+            width: 30px;
+            height: 3px;
+            background: #ffa502;
+            margin: 6px 0;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .hamburger-menu:hover .hamburger-line {
+            background: #ff4757;
+        }
+        
         .auth-toggle {
             text-align: center;
             margin-top: 16px;
@@ -756,6 +781,26 @@
         </div>
     </div>
 
+    <!-- Account Modal -->
+    <div id="accountModal" class="age-gate hidden">
+        <div class="age-gate-box">
+            <div class="age-warning">👤</div>
+            <div class="age-title">Account</div>
+            
+            <div id="accountAvatar" style="width: 80px; height: 80px; border-radius: 50%; margin: 20px auto; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px;">
+                👤
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <div id="accountName" style="font-size: 1.3rem; font-weight: 700; color: #ffa502; margin-bottom: 8px;">Loading...</div>
+                <div id="accountEmail" style="font-size: 0.9rem; color: rgba(255,255,255,0.7);">Loading...</div>
+            </div>
+            
+            <button class="btn btn-danger" onclick="signOut()">Sign Out</button>
+            <button class="btn btn-secondary" onclick="closeAccountModal()">Close</button>
+        </div>
+    </div>
+
     <!-- Main App -->
     <div id="app">
         <div class="screen hidden" id="logoScreen">
@@ -844,16 +889,11 @@
 
         <!-- Menu Screen -->
         <div id="menuScreen" class="screen hidden">
-            <!-- User Badge -->
-            <div id="menuUserBadge" class="user-badge">
-                <div class="user-info">
-                    <div class="user-avatar" id="menuUserAvatar">👤</div>
-                    <div>
-                        <div id="menuUserName" style="font-weight: 700; color: #ffa502;">Loading...</div>
-                        <div class="user-email" id="menuUserEmail">Please wait...</div>
-                    </div>
-                </div>
-                <button class="btn-signout" onclick="signOut()">Sign Out</button>
+            <!-- Hamburger Menu Icon -->
+            <div class="hamburger-menu" onclick="showAccountModal()">
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
+                <div class="hamburger-line"></div>
             </div>
             
             <div class="card">
@@ -1303,12 +1343,22 @@
         function updateUserDisplay() {
             const displayName = currentUser.displayName || currentUser.email || 'User';
             const email = currentUser.email || 'Signed in with Google';
-            const avatar = currentUser.photoURL ? `<img src="${currentUser.photoURL}" style="width: 40px; height: 40px; border-radius: 50%;">` : '👤';
+            const avatar = currentUser.photoURL ? `<img src="${currentUser.photoURL}" style="width: 80px; height: 80px; border-radius: 50%;">` : '👤';
             
-            // Update menu user badge
-            document.getElementById('menuUserName').textContent = displayName;
-            document.getElementById('menuUserEmail').textContent = email;
-            document.getElementById('menuUserAvatar').innerHTML = avatar;
+            // Update account modal
+            document.getElementById('accountName').textContent = displayName;
+            document.getElementById('accountEmail').textContent = email;
+            document.getElementById('accountAvatar').innerHTML = avatar;
+        }
+        
+        // Show account modal
+        function showAccountModal() {
+            document.getElementById('accountModal').classList.remove('hidden');
+        }
+        
+        // Close account modal
+        function closeAccountModal() {
+            document.getElementById('accountModal').classList.add('hidden');
         }
         
         // Google Sign In
@@ -1397,6 +1447,7 @@
         
         // Sign Out
         async function signOut() {
+            closeAccountModal(); // Close modal first
             if (confirm('Are you sure you want to sign out?')) {
                 try {
                     await auth.signOut();
