@@ -1293,18 +1293,39 @@
         
         // ===== FIREBASE AUTHENTICATION =====
         
+        // Check if we're returning from Google sign-in redirect
+        const wasSigningIn = localStorage.getItem('googleSignInInProgress') === 'true';
+        if (wasSigningIn) {
+            console.log('🔄 Returning from Google redirect...');
+            isSigningIn = true;
+        }
+        
         // Handle redirect result (for mobile Google sign-in)
         auth.getRedirectResult().then(result => {
+            console.log('📥 Redirect result received');
+            
             if (result.user) {
-                console.log('✅ Signed in via redirect:', result.user.email || result.user.displayName);
+                console.log('✅ Successfully signed in via redirect!');
+                console.log('User:', result.user.email || result.user.displayName);
+                console.log('UID:', result.user.uid);
+                localStorage.removeItem('googleSignInInProgress');
                 isSigningIn = false;
-                // onAuthStateChanged will handle navigation
+                // onAuthStateChanged will handle navigation to menu
+            } else if (wasSigningIn) {
+                console.log('⚠️ No user in redirect result (might have cancelled)');
+                localStorage.removeItem('googleSignInInProgress');
+                isSigningIn = false;
             } else {
+                console.log('ℹ️ No redirect in progress');
                 isSigningIn = false;
             }
         }).catch(error => {
-            console.error('Redirect sign-in error:', error);
+            console.error('❌ Redirect sign-in error:', error);
+            console.error('Error code:', error.code);
+            console.error('Error message:', error.message);
+            localStorage.removeItem('googleSignInInProgress');
             isSigningIn = false;
+            
             if (error.code && error.code !== 'auth/popup-closed-by-user' && error.code !== 'auth/cancelled-popup-request') {
                 showAuthError(getErrorMessage(error.code));
             }
@@ -1368,22 +1389,35 @@
                 hideAuthError(); // Clear any previous errors
                 const provider = new firebase.auth.GoogleAuthProvider();
                 
-                // Use redirect on mobile, popup on desktop
-                if (window.Capacitor || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                    console.log('Using redirect for Google sign-in (mobile)');
+                // Detect if mobile or Capacitor app
+                const isMobile = window.Capacitor || 
+                                /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                                window.innerWidth <= 768;
+                
+                // ALWAYS use redirect on mobile for better compatibility
+                if (isMobile) {
+                    console.log('🔄 Mobile detected - Using REDIRECT for Google sign-in');
+                    console.log('User agent:', navigator.userAgent);
+                    console.log('Screen width:', window.innerWidth);
+                    
+                    // Store that we're signing in
+                    localStorage.setItem('googleSignInInProgress', 'true');
+                    
                     await auth.signInWithRedirect(provider);
-                    // Page will redirect, then come back
+                    // Page will redirect to Google, then come back
+                    // getRedirectResult() will handle the result
                 } else {
-                    console.log('Using popup for Google sign-in (desktop)');
+                    console.log('🖥️ Desktop detected - Using POPUP for Google sign-in');
                     await auth.signInWithPopup(provider);
                     isSigningIn = false; // Reset flag after popup
                 }
                 // onAuthStateChanged will handle navigation
             } catch (error) {
-                console.error('Google sign in error:', error);
+                console.error('❌ Google sign in error:', error);
                 console.error('Error code:', error.code);
                 console.error('Error message:', error.message);
                 isSigningIn = false; // Reset flag on error
+                localStorage.removeItem('googleSignInInProgress');
                 
                 // Show user-friendly error
                 if (error.code === 'auth/popup-closed-by-user' || error.code === 'auth/cancelled-popup-request') {
