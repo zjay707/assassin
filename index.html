@@ -10,6 +10,7 @@
     <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
     
     <!-- Fingerprint.js for Device ID -->
     <script src="https://cdn.jsdelivr.net/npm/@fingerprintjs/fingerprintjs@3/dist/fp.min.js"></script>
@@ -580,6 +581,137 @@
             margin: 0;
         }
         
+        /* Auth Screen */
+        .auth-container {
+            max-width: 400px;
+            margin: 0 auto;
+        }
+        
+        .auth-divider {
+            text-align: center;
+            margin: 20px 0;
+            color: rgba(255, 255, 255, 0.4);
+            font-size: 14px;
+            position: relative;
+        }
+        
+        .auth-divider::before,
+        .auth-divider::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            width: 40%;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .auth-divider::before {
+            left: 0;
+        }
+        
+        .auth-divider::after {
+            right: 0;
+        }
+        
+        .btn-google {
+            background: white;
+            color: #444;
+            border: 1px solid #ddd;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            font-weight: 600;
+        }
+        
+        .btn-google:hover {
+            background: #f8f8f8;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .google-icon {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .auth-toggle {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .auth-toggle a {
+            color: #ffa502;
+            text-decoration: none;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .auth-toggle a:hover {
+            text-decoration: underline;
+        }
+        
+        .auth-error {
+            background: rgba(255, 71, 87, 0.2);
+            border: 1px solid #ff4757;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            color: #ff4757;
+            font-size: 14px;
+            text-align: center;
+        }
+        
+        .user-badge {
+            background: rgba(255, 165, 2, 0.2);
+            border: 1px solid rgba(255, 165, 2, 0.4);
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        
+        .user-email {
+            font-size: 14px;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        
+        .btn-signout {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            color: rgba(255, 255, 255, 0.7);
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+        
+        .btn-signout:hover {
+            border-color: #ff4757;
+            color: #ff4757;
+        }
+        
         /* Loading */
         .spinner {
             border: 3px solid rgba(255, 255, 255, 0.1);
@@ -626,7 +758,7 @@
 
     <!-- Main App -->
     <div id="app">
-        <div class="screen">
+        <div class="screen hidden" id="logoScreen">
             <!-- Crosshairs Logo -->
             <svg class="crosshair-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
                 <circle cx="50" cy="50" r="45" fill="none" stroke="#ff4757" stroke-width="2"/>
@@ -643,8 +775,79 @@
             <p class="subtitle">The Game Where Words Kill</p>
         </div>
 
+        <!-- Auth Screen -->
+        <div id="authScreen" class="screen hidden">
+            <div class="auth-container">
+                <div class="card">
+                    <div class="card-title">Welcome</div>
+                    
+                    <div id="authError" class="auth-error hidden"></div>
+                    
+                    <!-- Google Sign In -->
+                    <button class="btn btn-google" onclick="signInWithGoogle()">
+                        <svg class="google-icon" viewBox="0 0 24 24">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                        </svg>
+                        Sign in with Google
+                    </button>
+                    
+                    <div class="auth-divider">OR</div>
+                    
+                    <!-- Email/Password Sign In Form -->
+                    <div id="signInForm">
+                        <label>Email</label>
+                        <input type="email" id="emailInput" placeholder="your@email.com">
+                        
+                        <label>Password</label>
+                        <input type="password" id="passwordInput" placeholder="••••••••">
+                        
+                        <button class="btn btn-primary" onclick="signInWithEmail()">📧 Sign In</button>
+                        
+                        <div class="auth-toggle">
+                            Don't have an account? 
+                            <a onclick="showSignUpForm()">Create Account</a>
+                        </div>
+                    </div>
+                    
+                    <!-- Email/Password Sign Up Form -->
+                    <div id="signUpForm" class="hidden">
+                        <label>Email</label>
+                        <input type="email" id="signupEmailInput" placeholder="your@email.com">
+                        
+                        <label>Password</label>
+                        <input type="password" id="signupPasswordInput" placeholder="At least 6 characters">
+                        
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirmPasswordInput" placeholder="Re-enter password">
+                        
+                        <button class="btn btn-success" onclick="signUpWithEmail()">✍️ Create Account</button>
+                        
+                        <div class="auth-toggle">
+                            Already have an account? 
+                            <a onclick="showSignInForm()">Sign In</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Menu Screen -->
-        <div id="menuScreen" class="screen">
+        <div id="menuScreen" class="screen hidden">
+            <!-- User Badge -->
+            <div id="menuUserBadge" class="user-badge">
+                <div class="user-info">
+                    <div class="user-avatar" id="menuUserAvatar">👤</div>
+                    <div>
+                        <div id="menuUserName" style="font-weight: 700; color: #ffa502;">Loading...</div>
+                        <div class="user-email" id="menuUserEmail">Please wait...</div>
+                    </div>
+                </div>
+                <button class="btn-signout" onclick="signOut()">Sign Out</button>
+            </div>
+            
             <div class="card">
                 <button class="btn btn-primary" onclick="showGameList()">My Games</button>
                 <button class="btn btn-primary" onclick="showCreateGame()">Create New Game</button>
@@ -941,9 +1144,11 @@
         // Initialize Firebase
         firebase.initializeApp(firebaseConfig);
         const database = firebase.database();
+        const auth = firebase.auth();
 
         // ===== GLOBAL STATE =====
         let deviceId = null;
+        let currentUser = null; // Firebase Auth user
         let currentGameCode = null;
         let selectedDecks = ['standard']; // Array of selected deck IDs
         let afterDarkVerified = localStorage.getItem('afterDarkVerified') === 'true';
@@ -1032,31 +1237,163 @@
 
         // ===== DEVICE ID =====
         async function initializeApp() {
-            // First, check if we have a saved device ID
-            let savedDeviceId = localStorage.getItem('assassin_device_id');
-            
-            if (savedDeviceId) {
-                // Use saved ID
-                deviceId = savedDeviceId;
-                console.log('Using saved Device ID:', deviceId);
+            // Device ID now comes from Firebase Auth (user.uid)
+            // This function just waits for auth to complete
+            console.log('App initialized, waiting for authentication...');
+        }
+        
+        // ===== FIREBASE AUTHENTICATION =====
+        
+        // Listen for auth state changes
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // User is signed in
+                currentUser = user;
+                deviceId = user.uid; // Use Firebase Auth UID as device ID
+                console.log('User signed in:', user.email || 'Google User');
+                updateUserDisplay();
                 loadUserGamesFromStorage();
+                showMenu();
             } else {
-                // Try to get fingerprint ID
-                try {
-                    const fp = await FingerprintJS.load();
-                    const result = await fp.get();
-                    deviceId = result.visitorId;
-                    console.log('Generated FingerprintJS Device ID:', deviceId);
-                } catch (error) {
-                    // Fallback to random ID
-                    deviceId = 'device_' + Math.random().toString(36).substr(2, 9);
-                    console.log('Generated Fallback Device ID:', deviceId);
-                }
-                
-                // Save the device ID for future sessions
-                localStorage.setItem('assassin_device_id', deviceId);
-                loadUserGamesFromStorage();
+                // User is signed out
+                currentUser = null;
+                showAuthScreen();
             }
+        });
+        
+        function showAuthScreen() {
+            hideAllScreens();
+            document.getElementById('authScreen').classList.remove('hidden');
+        }
+        
+        function updateUserDisplay() {
+            const displayName = currentUser.displayName || currentUser.email || 'User';
+            const email = currentUser.email || 'Signed in with Google';
+            const avatar = currentUser.photoURL ? `<img src="${currentUser.photoURL}" style="width: 40px; height: 40px; border-radius: 50%;">` : '👤';
+            
+            // Update menu user badge
+            document.getElementById('menuUserName').textContent = displayName;
+            document.getElementById('menuUserEmail').textContent = email;
+            document.getElementById('menuUserAvatar').innerHTML = avatar;
+        }
+        
+        // Google Sign In
+        async function signInWithGoogle() {
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await auth.signInWithPopup(provider);
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Google sign in error:', error);
+                showAuthError(getErrorMessage(error.code));
+            }
+        }
+        
+        // Email/Password Sign In
+        async function signInWithEmail() {
+            const email = document.getElementById('emailInput').value.trim();
+            const password = document.getElementById('passwordInput').value;
+            
+            if (!email || !password) {
+                showAuthError('Please enter email and password');
+                return;
+            }
+            
+            try {
+                await auth.signInWithEmailAndPassword(email, password);
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Email sign in error:', error);
+                showAuthError(getErrorMessage(error.code));
+            }
+        }
+        
+        // Email/Password Sign Up
+        async function signUpWithEmail() {
+            const email = document.getElementById('signupEmailInput').value.trim();
+            const password = document.getElementById('signupPasswordInput').value;
+            const confirmPassword = document.getElementById('confirmPasswordInput').value;
+            
+            if (!email || !password || !confirmPassword) {
+                showAuthError('Please fill in all fields');
+                return;
+            }
+            
+            if (password.length < 6) {
+                showAuthError('Password must be at least 6 characters');
+                return;
+            }
+            
+            if (password !== confirmPassword) {
+                showAuthError('Passwords do not match');
+                return;
+            }
+            
+            try {
+                await auth.createUserWithEmailAndPassword(email, password);
+                // onAuthStateChanged will handle the rest
+            } catch (error) {
+                console.error('Sign up error:', error);
+                showAuthError(getErrorMessage(error.code));
+            }
+        }
+        
+        // Sign Out
+        async function signOut() {
+            if (confirm('Are you sure you want to sign out?')) {
+                try {
+                    await auth.signOut();
+                    // Clear local data
+                    deviceId = null;
+                    currentUser = null;
+                    userGames = {};
+                    // onAuthStateChanged will show auth screen
+                } catch (error) {
+                    console.error('Sign out error:', error);
+                    alert('Error signing out. Please try again.');
+                }
+            }
+        }
+        
+        // Toggle between sign in and sign up forms
+        function showSignUpForm() {
+            document.getElementById('signInForm').classList.add('hidden');
+            document.getElementById('signUpForm').classList.remove('hidden');
+            hideAuthError();
+        }
+        
+        function showSignInForm() {
+            document.getElementById('signUpForm').classList.add('hidden');
+            document.getElementById('signInForm').classList.remove('hidden');
+            hideAuthError();
+        }
+        
+        // Show auth error message
+        function showAuthError(message) {
+            const errorDiv = document.getElementById('authError');
+            errorDiv.textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        
+        function hideAuthError() {
+            document.getElementById('authError').classList.add('hidden');
+        }
+        
+        // Get user-friendly error messages
+        function getErrorMessage(code) {
+            const errorMessages = {
+                'auth/email-already-in-use': 'This email is already registered. Please sign in instead.',
+                'auth/invalid-email': 'Please enter a valid email address.',
+                'auth/weak-password': 'Password should be at least 6 characters.',
+                'auth/user-not-found': 'No account found with this email.',
+                'auth/wrong-password': 'Incorrect password. Please try again.',
+                'auth/too-many-requests': 'Too many failed attempts. Please try again later.',
+                'auth/network-request-failed': 'Network error. Please check your connection.',
+                'auth/popup-closed-by-user': 'Sign in cancelled.',
+                'auth/cancelled-popup-request': 'Sign in cancelled.'
+            };
+            
+            return errorMessages[code] || 'An error occurred. Please try again.';
         }
 
         // ===== SCREEN NAVIGATION =====
