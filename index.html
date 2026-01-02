@@ -1520,15 +1520,6 @@
             document.getElementById('hamburgerMenuGame')?.classList.add('hidden');
         }
         
-        function confirmLeaveToHome() {
-            if (confirm('Leave the game and return to home screen?')) {
-                closeHamburgerMenu();
-                leaveGame();
-            } else {
-                closeHamburgerMenu();
-            }
-        }
-        
         // Show account modal
         function showAccountModal() {
             closeHamburgerMenu(); // Close hamburger first
@@ -1640,7 +1631,18 @@
         // Sign Out
         async function signOut() {
             closeAccountModal(); // Close modal first
-            if (confirm('Are you sure you want to sign out?')) {
+            
+            const confirmed = await showModal({
+                icon: '👋',
+                title: 'Sign Out?',
+                message: 'Are you sure you want to sign out of your account?',
+                buttons: [
+                    { text: 'Yes, Sign Out', class: 'btn-danger', value: true },
+                    { text: 'Cancel', class: 'btn-secondary', value: false }
+                ]
+            });
+            
+            if (confirmed) {
                 try {
                     await auth.signOut();
                     // Clear local data
@@ -1650,7 +1652,11 @@
                     // onAuthStateChanged will show auth screen
                 } catch (error) {
                     console.error('Sign out error:', error);
-                    alert('Error signing out. Please try again.');
+                    showNotification({
+                        icon: '❌',
+                        title: 'Error',
+                        message: 'Error signing out. Please try again.'
+                    });
                 }
             }
         }
@@ -1829,8 +1835,18 @@
             });
         }
         
-        function deleteGame(gameCode) {
-            if (!confirm(`Remove game ${gameCode} from your list?`)) return;
+        async function deleteGame(gameCode) {
+            const confirmed = await showModal({
+                icon: '🗑️',
+                title: 'Remove Game?',
+                message: `Are you sure you want to remove game ${gameCode} from your list?`,
+                buttons: [
+                    { text: 'Yes, Remove', class: 'btn-danger', value: true },
+                    { text: 'Cancel', class: 'btn-secondary', value: false }
+                ]
+            });
+            
+            if (!confirmed) return;
             
             delete userGames[gameCode];
             saveUserGames();
@@ -2528,8 +2544,18 @@
         }
 
         // ===== LEAVE GAME =====
-        function leaveGame() {
-            if (confirm('Leave this game?')) {
+        async function leaveGame() {
+            const confirmed = await showModal({
+                icon: '🏠',
+                title: 'Leave Game?',
+                message: 'Are you sure you want to return to the home screen?',
+                buttons: [
+                    { text: 'Yes, Leave', class: 'btn-danger', value: true },
+                    { text: 'Stay in Game', class: 'btn-secondary', value: false }
+                ]
+            });
+            
+            if (confirmed) {
                 if (currentGameCode) {
                     database.ref(`games/${currentGameCode}/players`).off();
                     database.ref(`games/${currentGameCode}/started`).off();
