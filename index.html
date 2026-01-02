@@ -1238,45 +1238,45 @@
             afterdark: { 
                 name: '🔞 After Dark Deck', 
                 desc: '100 explicit words (18+)', 
-                price: '$2.99 USD', 
+                price: 'FREE', 
                 words: AFTERDARK_DECK, 
-                locked: true, 
+                locked: false, 
                 warning: '⚠️ ADULTS ONLY - Contains explicit sexual content, drug references, and mature themes. NOT FOR CHILDREN.' 
             },
             actitout: { 
                 name: '🎭 Act It Out Deck', 
                 desc: '100 action challenges', 
-                price: '$1.99 USD', 
+                price: 'FREE', 
                 words: ACTITOUT_DECK, 
-                locked: true
+                locked: false 
             },
             christmas: { 
                 name: '🎄 Christmas Deck', 
                 desc: '70 festive words', 
-                price: '$0.99 USD', 
+                price: 'FREE', 
                 words: CHRISTMAS_DECK, 
-                locked: true
+                locked: false 
             },
             movies: { 
                 name: '🎬 Movies & TV Deck', 
                 desc: '80 pop culture words', 
-                price: '$0.99 USD', 
+                price: 'FREE', 
                 words: MOVIES_DECK, 
-                locked: true
+                locked: false 
             },
             food: { 
                 name: '🍕 Food & Drink Deck', 
                 desc: '60 culinary words', 
-                price: '$0.99 USD', 
+                price: 'FREE', 
                 words: FOOD_DECK, 
-                locked: true
+                locked: false 
             },
             bundle: { 
                 name: '🎁 All Decks Bundle', 
                 desc: 'All 6 premium decks (910 words)', 
-                price: '$4.99 USD', 
+                price: 'FREE', 
                 words: [...AFTERDARK_DECK, ...ACTITOUT_DECK, ...CHRISTMAS_DECK, ...MOVIES_DECK, ...FOOD_DECK], 
-                locked: true
+                locked: false 
             }
         };
 
@@ -1573,8 +1573,15 @@
                     showAuthError('Sign-in cancelled. Please try again.');
                 } else if (error.code === 'auth/popup-blocked') {
                     showAuthError('Pop-up blocked! Please allow pop-ups and try again.');
+                } else if (error.code === 'auth/unauthorized-domain') {
+                    showAuthError('Domain not authorized. Please add this domain to Firebase authorized domains in Settings.');
+                } else if (error.code === 'auth/operation-not-allowed') {
+                    showAuthError('Google Sign-In not enabled. Please enable it in Firebase Console → Authentication → Sign-in method.');
+                } else if (error.code === 'auth/invalid-api-key') {
+                    showAuthError('Invalid API key. Please check Firebase configuration.');
                 } else {
-                    showAuthError(getErrorMessage(error.code));
+                    // Show detailed error for debugging
+                    showAuthError(`Error: ${error.message || error.code || 'Unknown error'}. Please try again or use email sign-in.`);
                 }
             }
         }
@@ -1590,7 +1597,41 @@
             }
             
             try {
-                await auth.signInWithEmailAndPassword(email, password);
+                const userCredential = await auth.signInWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Check if email is verified
+                if (!user.emailVerified) {
+                    // Sign them out
+                    await auth.signOut();
+                    
+                    // Show error with option to resend
+                    const resend = await showModal({
+                        icon: '📧',
+                        title: 'Email Not Verified',
+                        message: 'Please verify your email address before signing in. Check your inbox for the verification link.',
+                        buttons: [
+                            { text: 'Resend Email', class: 'btn-primary', value: true },
+                            { text: 'OK', class: 'btn-secondary', value: false }
+                        ]
+                    });
+                    
+                    if (resend) {
+                        // Sign in temporarily to send email
+                        const tempCred = await auth.signInWithEmailAndPassword(email, password);
+                        await tempCred.user.sendEmailVerification();
+                        await auth.signOut();
+                        
+                        showNotification({
+                            icon: '✅',
+                            title: 'Email Sent',
+                            message: 'Verification email sent! Please check your inbox.'
+                        });
+                    }
+                    return;
+                }
+                
+                // Email is verified, proceed to app
                 // onAuthStateChanged will handle the rest
             } catch (error) {
                 console.error('Email sign in error:', error);
@@ -1620,8 +1661,26 @@
             }
             
             try {
-                await auth.createUserWithEmailAndPassword(email, password);
-                // onAuthStateChanged will handle the rest
+                // Create account
+                const userCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const user = userCredential.user;
+                
+                // Send verification email
+                await user.sendEmailVerification();
+                
+                // Show success message
+                showNotification({
+                    icon: '📧',
+                    title: 'Verification Email Sent!',
+                    message: `We've sent a verification email to ${email}. Please check your inbox and click the verification link to complete your registration.`
+                });
+                
+                // Sign out user until they verify
+                await auth.signOut();
+                
+                // Show sign-in form
+                showSignInForm();
+                
             } catch (error) {
                 console.error('Sign up error:', error);
                 showAuthError(getErrorMessage(error.code));
