@@ -637,7 +637,7 @@
         /* App Header */
         .app-header {
             text-align: center;
-            padding: 20px 60px 10px 20px; /* Extra right padding for hamburger */
+            padding: 20px;
             position: relative;
         }
         
@@ -645,6 +645,7 @@
             width: 60px;
             height: 60px;
             margin: 0 auto 10px auto;
+            display: block;
         }
         
         .app-header h1 {
@@ -855,7 +856,12 @@
         <div class="age-gate-box">
             <div class="age-title">Account</div>
             
-            <div style="margin: 30px 0 20px 0;">
+            <!-- Profile Image (Google or default person icon) -->
+            <div id="accountAvatar" style="width: 80px; height: 80px; border-radius: 50%; margin: 20px auto; background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; font-size: 40px; overflow: hidden;">
+                👤
+            </div>
+            
+            <div style="margin: 20px 0;">
                 <div id="accountName" style="font-size: 1.3rem; font-weight: 700; color: #ffa502; margin-bottom: 8px;">Loading...</div>
                 <div id="accountEmail" style="font-size: 0.9rem; color: rgba(255,255,255,0.7);">Loading...</div>
             </div>
@@ -984,24 +990,13 @@
                 </svg>
                 <h1>ASSASSIN</h1>
                 <p class="subtitle">The Game Where Words Kill</p>
-                
-                <!-- Hamburger Menu Icon -->
-                <div class="hamburger-menu" onclick="toggleHamburgerMenu('menu')">
-                    <div class="hamburger-line"></div>
-                    <div class="hamburger-line"></div>
-                    <div class="hamburger-line"></div>
-                </div>
-                
-                <!-- Hamburger Dropdown (Home screen version) -->
-                <div id="hamburgerMenuHome" class="hamburger-dropdown hidden">
-                    <div class="hamburger-item" onclick="showAccountModal(); closeHamburgerMenu();">👤 Account</div>
-                </div>
             </div>
             
             <div class="card">
                 <button class="btn btn-primary" onclick="showGameList()">My Games</button>
                 <button class="btn btn-primary" onclick="showCreateGame()">Create New Game</button>
                 <button class="btn btn-primary" onclick="showJoinGame()">Join Existing Game</button>
+                <button class="btn btn-secondary" onclick="showAccountModal()">👤 Account</button>
             </div>
             
             <!-- How to Play Box -->
@@ -1092,19 +1087,6 @@
 
         <!-- Playing Screen -->
         <div id="playingScreen" class="screen hidden">
-            <!-- Hamburger Menu Icon -->
-            <div class="hamburger-menu" onclick="toggleHamburgerMenu('game')" style="position: fixed; top: 15px; right: 15px;">
-                <div class="hamburger-line"></div>
-                <div class="hamburger-line"></div>
-                <div class="hamburger-line"></div>
-            </div>
-            
-            <!-- Hamburger Dropdown (Gameplay version) -->
-            <div id="hamburgerMenuGame" class="hamburger-dropdown hidden" style="position: fixed; top: 50px; right: 15px;">
-                <div class="hamburger-item" onclick="showAccountModal(); closeHamburgerMenu();">👤 Account</div>
-                <div class="hamburger-item" onclick="confirmLeaveToHome();">🏠 Home Screen</div>
-            </div>
-            
             <!-- ALIVE PLAYER VIEW -->
             <div id="alivePlayerView">
                 <div class="mission-card">
@@ -1138,6 +1120,11 @@
                         <span>Your Points</span>
                         <span id="playerPoints" style="color: #ffa502; font-weight: 700;">0</span>
                     </div>
+                </div>
+                
+                <!-- Home Screen Button -->
+                <div class="card">
+                    <button class="btn btn-secondary" onclick="leaveGame()">🏠 Home Screen</button>
                 </div>
             </div>
             
@@ -1502,9 +1489,15 @@
             const displayName = currentUser.displayName || currentUser.email || 'User';
             const email = currentUser.email || 'Signed in with Google';
             
-            // Update account modal (removed avatar)
+            // Show Google profile pic if available, otherwise person icon
+            const avatar = currentUser.photoURL 
+                ? `<img src="${currentUser.photoURL}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;">` 
+                : '👤';
+            
+            // Update account modal
             document.getElementById('accountName').textContent = displayName;
             document.getElementById('accountEmail').textContent = email;
+            document.getElementById('accountAvatar').innerHTML = avatar;
         }
         
         // Hamburger Menu Functions
@@ -2323,19 +2316,40 @@
                 const me = game.players[deviceId];
                 const target = game.players[targetId];
                 
-                // Award points (ONLY to assassin, don't transfer target's points)
+                // Award points based on reloads used (5→4→3→2→1)
                 const pointValues = [5, 4, 3, 2, 1];
                 const pointsEarned = pointValues[me.reloads] || 1;
+                
+                console.log(`Processing elimination: ${me.name} eliminated ${target.name}`);
+                console.log(`Points earned: ${pointsEarned} (reloads used: ${me.reloads})`);
+                console.log(`Previous points: ${me.points}, New points: ${me.points + pointsEarned}`);
                 
                 // Mark target as dead
                 database.ref(`games/${currentGameCode}/players/${targetId}`).update({ dead: true });
                 
-                // Update assassin (inherit target, reset reloads, add points)
+                // Get word pool
+                const wordPool = game.combinedWords || WORD_DECKS['standard'].words;
+                
+                // Get all currently used words
+                const usedWords = Object.values(game.players)
+                    .filter(p => !p.dead && p.name !== target.name) // Exclude dead players and the target we just killed
+                    .map(p => p.word)
+                    .filter(Boolean);
+                
+                // Find available unique words
+                const availableWords = wordPool.filter(word => !usedWords.includes(word));
+                
+                // Pick new UNIQUE word for the new target
+                const newWord = availableWords.length > 0 
+                    ? availableWords[Math.floor(Math.random() * availableWords.length)]
+                    : wordPool[Math.floor(Math.random() * wordPool.length)]; // Fallback if somehow no words available
+                
+                // Update assassin: inherit target, get NEW unique word, reset reloads, add ONLY earned points
                 database.ref(`games/${currentGameCode}/players/${deviceId}`).update({
                     target: target.target,
-                    word: game.players[target.target]?.word || 'NONE',
-                    points: me.points + pointsEarned,  // Only add earned points
-                    reloads: 0  // RESET reloads after kill
+                    word: newWord,  // NEW unique word (not inherited!)
+                    points: me.points + pointsEarned,  // Add ONLY the points earned from this kill
+                    reloads: 0  // Reset reloads after kill
                 });
                 
                 showNotification({
